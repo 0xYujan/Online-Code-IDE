@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 mongoose.connect('mongodb://127.0.0.1:27017/codeIDE');
@@ -38,7 +37,13 @@ const projectSchema = new mongoose.Schema({
   jsCode: {
     type: String,
     default: 'console.log("Hello World")'
-  }
+  },
+  collaborators: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'  // Assuming the user model is named "User"
+    }
+  ]
 });
 
 module.exports = mongoose.model("Project", projectSchema);

@@ -110,8 +110,7 @@ const Editior = () => {
     };
   }, [projectID, htmlCode, cssCode, jsCode]);
 
-
-  return (
+return (
     <>
       <EditiorNavbar />
       <div className="flex">

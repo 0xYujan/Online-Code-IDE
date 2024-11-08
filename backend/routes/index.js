@@ -143,5 +143,28 @@ router.post("/updateProject", async (req, res) => {
   }
 });
 
+router.post("/addCollaborator", async (req, res) => {
+  const {  projId, collaboratorId, htmlCode, cssCode, jsCode } = req.body;
+
+  // Verify that the user exists
+ 
+  // Verify that the collaborator exists
+  let collaborator = await userModel.findOne({ _id: collaboratorId });
+  if (!collaborator) {
+    return res.json({ success: false, message: "Collaborator not found!" });
+  }
+
+  // Add collaborator to the project
+  let project = await projectModel.findByIdAndUpdate(
+    projId,
+    { $push: { collaborators: collaboratorId } },
+    { htmlCode: htmlCode, cssCode: cssCode, jsCode: jsCode },
+    { new: true } // Return the updated project
+  );
+
+  return res.json({ success: true, message: "Collaborator added successfully", project: project });
+});
+
+
 
 module.exports = router;

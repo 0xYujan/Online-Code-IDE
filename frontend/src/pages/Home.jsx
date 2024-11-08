@@ -1,21 +1,19 @@
-import React, { useEffect, useState } from 'react'
-import Navbar from '../components/Navbar'
+import React, { useEffect, useState } from 'react';
+import Navbar from '../components/Navbar';
 import ListCard from '../components/ListCard';
 import GridCard from '../components/GridCard';
 import { api_base_url } from '../helper';
 import { useNavigate } from 'react-router-dom';
+import Collaboration from '../components/Collaboration';
 
 const Home = () => {
-
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState(''); // State for search query
+  const [searchQuery, setSearchQuery] = useState('');
   const [projTitle, setProjTitle] = useState("");
-  const [projCode, setProjCode] = useState("");
-  const navigate = useNavigate();
   const [isCreateModelShow, setIsCreateModelShow] = useState(false);
   const [isCollabModelShow, setIsCollabModelShow] = useState(false);
-
+  const navigate = useNavigate();
   // Filter data based on search query
   const filteredData = data ? data.filter(item =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase()) // Case insensitive filtering
@@ -48,38 +46,38 @@ const Home = () => {
     }
   };
 
-  const collabProj = (e) => {
-    if (projCode === "") {
-      alert("Please Enter Project Code");
-    } else {
-      fetch(api_base_url + "/addCollaborator", {  // New endpoint to add collaborators
-        mode: "cors",
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          projectId: projCode,  // Pass project code as project ID
-          collaboratorId: localStorage.getItem("userId")  // Current user's ID
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setIsCollabModelShow(false);
-          setProjCode("");
-          alert("Collaboration Successful! You have joined the project.");
-          navigate(`/editor/${projCode}`);  // Navigate to the project editor
-        } else {
-          alert(data.message || "Something went wrong.");
-        }
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        alert("Failed to connect to project. Please try again.");
-      });
-    }
-  };
+  // const collabProj = (e) => {
+  //   if (projCode === "") {
+  //     alert("Please Enter Project Code");
+  //   } else {
+  //     fetch(api_base_url + "/addCollaborator", {  // New endpoint to add collaborators
+  //       mode: "cors",
+  //       method: "Post",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         projectId: projCode,  // Pass project code as project ID
+  //         collaboratorId: localStorage.getItem("userId")  // Current user's ID
+  //       })
+  //     })
+  //     .then(res => res.json())
+  //     .then(data => {
+  //       if (data.success) {
+  //         setIsCollabModelShow(false);
+  //         setProjCode("");
+  //         alert("Collaboration Successful! You have joined the project.");
+  //         navigate(`/editor/${projCode}`);  // Navigate to the project editor
+  //       } else {
+  //         alert(data.message || "Something went wrong.");
+  //       }
+  //     })
+  //     .catch(error => {
+  //       console.error("Error:", error);
+  //       alert("Failed to connect to project. Please try again.");
+  //     });
+  //   }
+  // };
   
   const getProj = () => {
     fetch(api_base_url + "/getProjects", {
@@ -192,26 +190,11 @@ const Home = () => {
           </div>
         </div>
       }
-
-{isCollabModelShow &&
-        <div className="createModelCon fixed top-0 left-0 right-0 bottom-0 w-screen h-screen bg-[rgb(0,0,0,0.1)] flex items-center justify-center">
-          <div className="createModel w-[25vw] h-[27vh] shadow-lg shadow-black/50 bg-[#141414] rounded-[10px] p-[20px]">
-            <h3 className='text-2xl'>Enter a Project code</h3>
-            <div className="inputBox !bg-[#202020] mt-4">
-              <input
-                onChange={(e) => { setProjTitle(e.target.value) }}
-                value={projTitle}
-                type="text"
-                placeholder='Project Code'
-              />
-            </div>
-            <div className='flex items-center gap-[10px] w-full mt-2'>
-              <button onClick={collabProj} className='btnBlue rounded-[5px] w-[49%] mb-4 !p-[5px] !px-[10px] !py-[10px]'>Connect</button>
-              <button onClick={() => { setIsCollabModelShow(false) }} className='btnBlue !bg-[#1A1919] rounded-[5px] mb-4 w-[49%] !p-[5px] !px-[10px] !py-[10px]'>Cancel</button>
-            </div>
-          </div>
-        </div>
-      }
+      {/* Collaboration Modal */}
+      <Collaboration
+        isCollabModelShow={isCollabModelShow}
+        setIsCollabModelShow={setIsCollabModelShow}
+      />
 
 
     </>
