@@ -27,7 +27,7 @@ const Collaboration = ({ isCollabModelShow, setIsCollabModelShow }) => {
           setIsCollabModelShow(false);
           setProjCode("");
           alert("Collaboration Successful! You have joined the project.");
-          navigate(`/editor/${projCode}`);  // Navigate to the project editor
+          navigate(`/editior/${projCode}`);  // Navigate to the project editor
         } else {
           alert(data.message || "Something went wrong.");
         }
