@@ -5,6 +5,7 @@ import GridCard from '../components/GridCard';
 import { api_base_url } from '../helper';
 import { useNavigate } from 'react-router-dom';
 import Collaboration from '../components/Collaboration';
+import toast from 'react-hot-toast';
 
 const Home = () => {
   const [data, setData] = useState(null);
@@ -37,7 +38,7 @@ const Home = () => {
         if (data.success) {
           setIsCreateModelShow(false);
           setProjTitle("");
-          alert("Project Created Successfully");
+          toast("Project Created Successfully");
           navigate(`/editior/${data.projectId}`);
         } else {
           alert("Something Went Wrong");
@@ -46,38 +47,6 @@ const Home = () => {
     }
   };
 
-  // const collabProj = (e) => {
-  //   if (projCode === "") {
-  //     alert("Please Enter Project Code");
-  //   } else {
-  //     fetch(api_base_url + "/addCollaborator", {  // New endpoint to add collaborators
-  //       mode: "cors",
-  //       method: "Post",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify({
-  //         projectId: projCode,  // Pass project code as project ID
-  //         collaboratorId: localStorage.getItem("userId")  // Current user's ID
-  //       })
-  //     })
-  //     .then(res => res.json())
-  //     .then(data => {
-  //       if (data.success) {
-  //         setIsCollabModelShow(false);
-  //         setProjCode("");
-  //         alert("Collaboration Successful! You have joined the project.");
-  //         navigate(`/editor/${projCode}`);  // Navigate to the project editor
-  //       } else {
-  //         alert(data.message || "Something went wrong.");
-  //       }
-  //     })
-  //     .catch(error => {
-  //       console.error("Error:", error);
-  //       alert("Failed to connect to project. Please try again.");
-  //     });
-  //   }
-  // };
   
   const getProj = () => {
     fetch(api_base_url + "/getProjects", {

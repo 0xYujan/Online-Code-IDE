@@ -7,6 +7,7 @@
 var app = require('../app');
 var debug = require('debug')('backend:server');
 var http = require('http');
+const { Server } = require('socket.io');  // Import socket.io
 
 /**
  * Get port from environment and store in Express.
@@ -20,6 +21,29 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
+
+/**
+ * Initialize Socket.io and attach it to the server.
+ */
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"]
+  }
+});
+
+
+io.on('connection', (socket) => {
+  console.log('socket connected', socket.id);
+  // Add other event listeners here, if needed
+});
+
+io.on('connection', (socket) => {
+  console.log(`Client connected: ${socket.id}`);
+  socket.on('disconnect', () => {
+    console.log(`Client disconnected: ${socket.id}`);
+  });
+});
 
 /**
  * Listen on provided port, on all network interfaces.

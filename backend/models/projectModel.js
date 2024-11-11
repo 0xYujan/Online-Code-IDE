@@ -36,7 +36,7 @@ const projectSchema = new mongoose.Schema({
   },
   jsCode: {
     type: String,
-    default: 'console.log("Hello World")'
+    default: '//console.log("Hello World")'
   },
   collaborators: [
     {
