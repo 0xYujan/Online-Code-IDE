@@ -1,61 +1,89 @@
 const http = require('http');
-const { Server } = require('socket.io'); 
 const express = require('express');
+const { Server } = require('socket.io');
+const OT = require('ot'); // Operational Transformation library
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173', // Update to your frontend's URL if necessary
+    origin: 'http://localhost:3000', // Frontend URL
     methods: ['GET', 'POST'],
   },
-}); 
+});
 
-const userSocketMap = {};
+const projectData = {}; // Stores OT instances for each project
 
-function getAllConnectedClients(projectID) {
-  return Array.from(io.sockets.adapter.rooms.get(projectID) || []).map((socketId) => {
-    return {
-      socketId,
-      userId: userSocketMap[socketId],
-    };
-  });
+function initProject(projectID) {
+  if (!projectData[projectID]) {
+    projectData[projectID] = new OT.EditorSocketIOServer(
+      JSON.stringify({ content: "", anchor: 0, focus: 0 }), // Ensure 'anchor' and 'focus' exist
+      [],
+      projectID,
+      (transform, revision) => revision,
+      (err) => {
+        if (err) console.error(`Error initializing OT for project ${projectID}:`, err);
+      }
+    );
+  }
 }
+
+
 
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
-  // Listen for `join` event
+  // Example: Adding the `code-change` listener here
+  socket.on("code-change", ({ projectID, operation, revision, tab }) => {
+    if (!operation || typeof operation.content !== 'string' || !operation.anchor || !operation.focus) {
+      console.error("Invalid operation received:", operation);
+      return;
+    }
+  
+    console.log("Operation content:", operation.content);
+    console.log("Operation anchor:", operation.anchor);
+    console.log("Operation focus:", operation.focus);
+  
+    if (projectData[projectID]) {
+      projectData[projectID].onOperation(socket, revision, operation, (err, updatedOperation) => {
+        if (err) {
+          console.error("OT processing error:", err);
+          return;
+        }
+        socket.to(projectID).emit("code-update", { tab, operation: updatedOperation });
+      });
+    } else {
+      console.error(`Project ${projectID} does not exist`);
+    }
+  });
+  
+  
+  
+
+
+  // Additional code for joining and disconnecting
   socket.on('join', ({ projectID, userId }) => {
     console.log(`User ${userId} joined project ${projectID}`);
-    userSocketMap[socket.id] = userId;
     socket.join(projectID);
-    const clients = getAllConnectedClients(projectID);
+    initProject(projectID);
 
-    // Notify all clients in the room about the new connection
+    const otInstance = projectData[projectID];
+    if (otInstance) {
+      const latestDocument = otInstance.document;
+      socket.emit('code-update', { tab: 'all', operation: latestDocument });
+    }
+
+    const clients = Array.from(io.sockets.adapter.rooms.get(projectID) || []).map((socketId) => ({
+      socketId,
+      userId,
+    }));
     clients.forEach(({ socketId }) => {
-      io.to(socketId).emit('joined', { 
-        clients,
-        userId,
-        socketId: socket.id,
-      });
+      io.to(socketId).emit('joined', { clients, userId, socketId: socket.id });
     });
   });
 
-  // Handle `disconnect` event
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
-
-    // Remove the user from the map and notify others
-    const userId = userSocketMap[socket.id];
-    delete userSocketMap[socket.id];
-
-    // Notify other clients in the same project rooms
-    for (const projectID of socket.rooms) {
-      const clients = getAllConnectedClients(projectID);
-      clients.forEach(({ socketId }) => {
-        io.to(socketId).emit('disconnected', { userId, socketId: socket.id });
-      });
-    }
   });
 });
 

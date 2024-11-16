@@ -1,17 +1,29 @@
-// socket.js
+// src/socket.js
 import { io } from 'socket.io-client';
 
-export const initSocket = async () => {
-  const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000', {
-    transports: ['websocket'],
-    reconnectionAttempts: 'Infinity',
-    timeout: 10000,
-    forceNew: true,
-  });
+let socket; // Singleton socket instance
 
-  socket.on('connect', () => {
-    console.log('Connected to server:', socket.id);
-  });
+export const initSocket = async () => {
+  if (!socket) {
+    socket = io('http://localhost:5000', {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      timeout: 10000,
+    });
+
+    socket.on('connect', () => {
+      console.log('Connected to server:', socket.id);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Connection error:', err.message);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.warn('Disconnected from server:', reason);
+    });
+  }
 
   return socket;
 };
