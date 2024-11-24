@@ -12,81 +12,45 @@ const io = new Server(server, {
   },
 });
 
-const projectData = {}; // Stores OT instances for each project
+const port = 5000;
 
-function initProject(projectID) {
-  if (!projectData[projectID]) {
-    projectData[projectID] = new OT.EditorSocketIOServer(
-      JSON.stringify({ content: "", anchor: 0, focus: 0 }), 
-      [], 
-      projectID,
-      (transform, revision) => revision, // Handling the revision update
-      (err) => {
-        if (err) console.error(`Error initializing OT for project ${projectID}:`, err);
-      }
-    );
-  }
-}
+// Sample code storage
+let projects = {};
 
+// Socket.io event handling
 io.on('connection', (socket) => {
-  console.log(`Client connected: ${socket.id}`);
-
-  // Listen for 'code-change' event from client
-  socket.on('code-change', ({ projectID, operation, revision, tab }) => {
-    console.log("Received operation:", operation);
-    console.log("Current revision:", revision);
-    console.log("For tab:", tab);
+  console.log('A user connected');
   
-    // Validate the operation object to ensure 'anchor' and 'focus' are defined
-    if (!operation || typeof operation.anchor === 'undefined' || typeof operation.focus === 'undefined') {
-      console.error("Invalid operation received. Missing 'anchor' or 'focus'.");
-      return;
-    }
-  
-    // Process the operation using OT if the project exists
-    if (projectData[projectID]) {
-      projectData[projectID].onOperation(socket, revision, operation, (err, updatedOperation) => {
-        if (err) {
-          console.error("OT processing error:", err);
-          return;
-        }
-  
-        // Broadcast the update to all clients, including the sender
-        io.to(projectID).emit("code-update", { tab, operation: updatedOperation });
-      });
-    } else {
-      console.error(`Project ${projectID} does not exist`);
-    }
-  });
-  
-
-  // Handle joining a project room
   socket.on('join', ({ projectID, userId }) => {
-    console.log(`User ${userId} joined project ${projectID}`);
     socket.join(projectID);
-    initProject(projectID); // Initialize OT for this project
-
-    const otInstance = projectData[projectID];
-    if (otInstance) {
-      const latestDocument = otInstance.document;
-      socket.emit('code-change', { tab: 'all', operation: latestDocument });
+    console.log(`${userId} joined the room`);
+    
+    if (!projects[projectID]) {
+      projects[projectID] = {
+        clients: [],
+        htmlCode: "<h1>Hello world</h1>",
+        cssCode: "body { background-color: #f4f4f4; }",
+        jsCode: "// some comment",
+      };
     }
+    
+    projects[projectID].clients.push(userId);
+    io.to(projectID).emit('joined', { clients: projects[projectID].clients, userId });
+  });
 
-    // Broadcast to other clients in the room that a new client has joined
-    const clients = Array.from(io.sockets.adapter.rooms.get(projectID) || []).map((socketId) => ({
-      socketId,
-      userId,
-    }));
-    clients.forEach(({ socketId }) => {
-      io.to(socketId).emit('joined', { clients, userId, socketId: socket.id });
-    });
+  socket.on('code-change', ({ projectID, tab, operation }) => {
+    if (tab === 'html') projects[projectID].htmlCode = operation.content;
+    else if (tab === 'css') projects[projectID].cssCode = operation.content;
+    else if (tab === 'js') projects[projectID].jsCode = operation.content;
+
+    io.to(projectID).emit('code-update', { tab, operation });
   });
 
   socket.on('disconnect', () => {
-    console.log(`Client disconnected: ${socket.id}`);
+    console.log('A user disconnected');
   });
 });
 
-server.listen(5000, () => {
-  console.log('Server listening on port 5000');
+server.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
