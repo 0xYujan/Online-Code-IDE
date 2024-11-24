@@ -17,10 +17,10 @@ const projectData = {}; // Stores OT instances for each project
 function initProject(projectID) {
   if (!projectData[projectID]) {
     projectData[projectID] = new OT.EditorSocketIOServer(
-      JSON.stringify({ content: "", anchor: 0, focus: 0 }), // Ensure 'anchor' and 'focus' exist
-      [],
+      JSON.stringify({ content: "", anchor: 0, focus: 0 }), 
+      [], 
       projectID,
-      (transform, revision) => revision,
+      (transform, revision) => revision, // Handling the revision update
       (err) => {
         if (err) console.error(`Error initializing OT for project ${projectID}:`, err);
       }
@@ -28,51 +28,51 @@ function initProject(projectID) {
   }
 }
 
-
-
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
-  // Example: Adding the `code-change` listener here
-  socket.on("code-change", ({ projectID, operation, revision, tab }) => {
-    if (!operation || typeof operation.content !== 'string' || !operation.anchor || !operation.focus) {
-      console.error("Invalid operation received:", operation);
+  // Listen for 'code-change' event from client
+  socket.on('code-change', ({ projectID, operation, revision, tab }) => {
+    console.log("Received operation:", operation);
+    console.log("Current revision:", revision);
+    console.log("For tab:", tab);
+  
+    // Validate the operation object to ensure 'anchor' and 'focus' are defined
+    if (!operation || typeof operation.anchor === 'undefined' || typeof operation.focus === 'undefined') {
+      console.error("Invalid operation received. Missing 'anchor' or 'focus'.");
       return;
     }
   
-    console.log("Operation content:", operation.content);
-    console.log("Operation anchor:", operation.anchor);
-    console.log("Operation focus:", operation.focus);
-  
+    // Process the operation using OT if the project exists
     if (projectData[projectID]) {
       projectData[projectID].onOperation(socket, revision, operation, (err, updatedOperation) => {
         if (err) {
           console.error("OT processing error:", err);
           return;
         }
-        socket.to(projectID).emit("code-update", { tab, operation: updatedOperation });
+  
+        // Broadcast the update to all clients, including the sender
+        io.to(projectID).emit("code-update", { tab, operation: updatedOperation });
       });
     } else {
       console.error(`Project ${projectID} does not exist`);
     }
   });
   
-  
-  
 
-
-  // Additional code for joining and disconnecting
+  // Handle joining a project room
   socket.on('join', ({ projectID, userId }) => {
     console.log(`User ${userId} joined project ${projectID}`);
     socket.join(projectID);
-    initProject(projectID);
+    initProject(projectID); // Initialize OT for this project
 
     const otInstance = projectData[projectID];
     if (otInstance) {
       const latestDocument = otInstance.document;
-      socket.emit('code-update', { tab: 'all', operation: latestDocument });
+      socket.emit('code-change', { tab: 'all', operation: latestDocument });
     }
 
+    // Broadcast to other clients in the room that a new client has joined
     const clients = Array.from(io.sockets.adapter.rooms.get(projectID) || []).map((socketId) => ({
       socketId,
       userId,

@@ -7,54 +7,55 @@ import { useParams, useNavigate } from "react-router-dom";
 import { initSocket } from "../socket";
 import ACTIONS from "../Actions";
 import toast from "react-hot-toast";
-import Editor from "@monaco-editor/react";  // Monaco Editor for rich code editing
+import Editor from "@monaco-editor/react";
 
 const Editior = () => {
-  const [tab, setTab] = useState("html"); // Default to HTML tab
-  const [isLightMode, setIsLightMode] = useState(false); // Light/Dark mode toggle
-  const [isExpanded, setIsExpanded] = useState(false); // Expand/Collapse iframe
+  const [tab, setTab] = useState("html");
+  const [isLightMode, setIsLightMode] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [htmlCode, setHtmlCode] = useState("<h1>Hello world</h1>");
   const [cssCode, setCssCode] = useState("body { background-color: #f4f4f4; }");
   const [jsCode, setJsCode] = useState("// some comment");
 
-  const editorRef = useRef(null); // Reference for Monaco editor
-  const socketRef = useRef(null); // Reference for socket connection
-  const currentRevision = useRef(0); // Track revision for operational transformation (OT)
+  const editorRef = useRef(null);
+  const socketRef = useRef(null);
+  const currentRevision = useRef(0);
   const { projectID } = useParams();
   const navigate = useNavigate();
   const [clients, setClients] = useState([]);
 
-  // Initialize socket and editor when the component mounts
   useEffect(() => {
     const init = async () => {
       socketRef.current = await initSocket();
 
-      // Error handling for socket connection
       socketRef.current.on("connect_error", handleErrors);
       socketRef.current.on("connect_failed", handleErrors);
 
-      // Join the project room
       socketRef.current.emit(ACTIONS.JOIN, {
         projectID,
         userId: localStorage.getItem("userId"),
       });
 
-      // Update clients list on joining
       socketRef.current.on(ACTIONS.JOINED, ({ clients, userId }) => {
         if (userId !== localStorage.getItem("userId")) {
           toast.success(`${userId} joined the room`);
         }
-        setClients(clients); 
+        setClients(clients);
       });
 
-      // Listen for code updates from other clients
-      socketRef.current.on(ACTIONS.CODE_UPDATE, ({ tab, operation }) => {
+      socketRef.current.on("code-update", ({ tab, operation }) => {
         if (tab === "html") setHtmlCode(operation.content);
         else if (tab === "css") setCssCode(operation.content);
         else if (tab === "js") setJsCode(operation.content);
+
+        // Handle editor cursor sync (if supported)
+        const editor = editorRef.current;
+        if (editor && operation.anchor !== undefined) {
+          const selection = editor.getModel().getFullModelRange(); // Update cursor/selection
+          editor.setSelection(selection);
+        }
       });
 
-      // Log disconnection
       socketRef.current.on("disconnect", () => {
         console.log("Disconnected from server");
       });
@@ -64,44 +65,40 @@ const Editior = () => {
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.disconnect(); // Clean up on unmount
+        socketRef.current.disconnect();
       }
     };
   }, [projectID, navigate]);
 
-  // Handle socket errors
   const handleErrors = (e) => {
-    console.log("Socket error", e);
+    console.error("Socket error", e);
     toast.error("Socket connection failed, try again later");
     navigate("/");
   };
 
-  // Emit code changes to the server whenever content changes in the editor
   const handleCodeChange = (value) => {
     if (socketRef.current) {
-      const selection = editorRef.current?.getSelection();
+      const editor = editorRef.current;
+      const selection = editor?.getSelection();
       const operation = {
         content: value || "",
-        anchor: selection?.anchor || 0, // Default to 0 if anchor is undefined
-        focus: selection?.focus || 0,   // Default to 0 if focus is undefined
+        anchor: selection?.startLineNumber || 0,
+        focus: selection?.endLineNumber || 0,
       };
 
-      // Emit the code change to the server
-      socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+      socketRef.current.emit("code-change", {
         projectID,
         tab,
         operation,
-        revision: currentRevision.current, // Increment revision for each change
+        revision: currentRevision.current,
       });
     }
 
-    // Update local state for the respective code tab
     if (tab === "html") setHtmlCode(value);
     else if (tab === "css") setCssCode(value);
     else if (tab === "js") setJsCode(value);
   };
 
-  // Change theme between light and dark mode
   const changeTheme = () => {
     const editorNavbar = document.querySelector(".EditiorNavbar");
     if (isLightMode) {
@@ -115,7 +112,6 @@ const Editior = () => {
     }
   };
 
-  // Run the code in an iframe
   const run = () => {
     const html = htmlCode;
     const css = `<style>${cssCode}</style>`;
@@ -127,7 +123,6 @@ const Editior = () => {
     }
   };
 
-  // Trigger the `run` function whenever code changes
   useEffect(() => {
     const timer = setTimeout(() => {
       run();
@@ -135,9 +130,8 @@ const Editior = () => {
     return () => clearTimeout(timer);
   }, [htmlCode, cssCode, jsCode]);
 
-  // Fetch project data initially when projectID changes
   useEffect(() => {
-    fetch(api_base_url + "/getProject", {
+    fetch(`${api_base_url}/getProject`, {
       mode: "cors",
       method: "POST",
       headers: {
@@ -156,12 +150,11 @@ const Editior = () => {
       });
   }, [projectID]);
 
-  // Save the project when Ctrl + S is pressed
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.ctrlKey && event.key === "s") {
         event.preventDefault();
-        fetch(api_base_url + "/updateProject", {
+        fetch(`${api_base_url}/updateProject`, {
           mode: "cors",
           method: "POST",
           headers: {
@@ -170,9 +163,9 @@ const Editior = () => {
           body: JSON.stringify({
             userId: localStorage.getItem("userId"),
             projId: projectID,
-            htmlCode: htmlCode,
-            cssCode: cssCode,
-            jsCode: jsCode,
+            htmlCode,
+            cssCode,
+            jsCode,
           }),
         })
           .then((res) => res.json())
@@ -205,19 +198,25 @@ const Editior = () => {
             <div className="tabs flex items-center gap-2">
               <div
                 onClick={() => setTab("html")}
-                className="tab cursor-pointer p-[6px] bg-[#1E1E1E] px-[10px] text-[15px]"
+                className={`tab cursor-pointer p-[6px] ${
+                  tab === "html" ? "bg-[#1E1E1E]" : ""
+                } px-[10px] text-[15px]`}
               >
                 HTML
               </div>
               <div
                 onClick={() => setTab("css")}
-                className="tab cursor-pointer p-[6px] bg-[#1E1E1E] px-[10px] text-[15px]"
+                className={`tab cursor-pointer p-[6px] ${
+                  tab === "css" ? "bg-[#1E1E1E]" : ""
+                } px-[10px] text-[15px]`}
               >
                 CSS
               </div>
               <div
                 onClick={() => setTab("js")}
-                className="tab cursor-pointer p-[6px] bg-[#1E1E1E] px-[10px] text-[15px]"
+                className={`tab cursor-pointer p-[6px] ${
+                  tab === "js" ? "bg-[#1E1E1E]" : ""
+                } px-[10px] text-[15px]`}
               >
                 JavaScript
               </div>
@@ -242,15 +241,16 @@ const Editior = () => {
             theme={isLightMode ? "vs-light" : "vs-dark"}
             language={tab}
             value={tab === "html" ? htmlCode : tab === "css" ? cssCode : jsCode}
-            editorDidMount={(editor) => (editorRef.current = editor)} // Set editorRef to access selection
+            onMount={(editor) => (editorRef.current = editor)}
           />
         </div>
 
         {!isExpanded && (
           <iframe
             id="iframe"
-            className="w-[50%] min-h-[82vh] bg-[#fff] text-black"
-            title="output"
+            className="right w-[50%]"
+            title="Output"
+            sandbox="allow-scripts"
           />
         )}
       </div>
