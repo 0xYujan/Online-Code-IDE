@@ -47,14 +47,20 @@ const Editior = () => {
         if (tab === "html") setHtmlCode(operation.content);
         else if (tab === "css") setCssCode(operation.content);
         else if (tab === "js") setJsCode(operation.content);
-
-        // Handle editor cursor sync (if supported)
+      
         const editor = editorRef.current;
-        if (editor && operation.anchor !== undefined) {
-          const selection = editor.getModel().getFullModelRange(); // Update cursor/selection
-          editor.setSelection(selection);
+      
+        // Only restore the selection and cursor position if the position is available
+        if (editor && operation.position) {
+          editor.setPosition(operation.position);  // Set cursor position
+      
+          const newSelection = new monaco.Range(
+            operation.anchor, 0, operation.focus, 0
+          );
+          editor.setSelection(newSelection);  // Restore the selection range
         }
       });
+      
 
       socketRef.current.on("disconnect", () => {
         console.log("Disconnected from server");
@@ -80,12 +86,15 @@ const Editior = () => {
     if (socketRef.current) {
       const editor = editorRef.current;
       const selection = editor?.getSelection();
+      const position = editor?.getPosition();  // Capture the current cursor position
+  
       const operation = {
         content: value || "",
         anchor: selection?.startLineNumber || 0,
         focus: selection?.endLineNumber || 0,
+        position,  // Store the cursor position
       };
-
+  
       socketRef.current.emit("code-change", {
         projectID,
         tab,
@@ -93,7 +102,8 @@ const Editior = () => {
         revision: currentRevision.current,
       });
     }
-
+  
+    // Update the local state with the new code
     if (tab === "html") setHtmlCode(value);
     else if (tab === "css") setCssCode(value);
     else if (tab === "js") setJsCode(value);
@@ -191,8 +201,8 @@ const Editior = () => {
 
   return (
     <>
-      <EditiorNavbar clients={clients} />
-      <div className="flex">
+<EditiorNavbar clients={clients} projectName={`Project: ${projectID}`} />
+<div className="flex">
         <div className={`left w-[${isExpanded ? "100%" : "50%"}]`}>
           <div className="tabs flex items-center justify-between gap-2 w-full bg-[#1A1919] h-[50px] px-[40px]">
             <div className="tabs flex items-center gap-2">

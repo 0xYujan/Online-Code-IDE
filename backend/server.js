@@ -43,7 +43,7 @@ io.on('connection', (socket) => {
     else if (tab === 'css') projects[projectID].cssCode = operation.content;
     else if (tab === 'js') projects[projectID].jsCode = operation.content;
 
-    io.to(projectID).emit('code-update', { tab, operation });
+    socket.in(projectID).emit('code-update', { tab, operation });
   });
 
   socket.on('disconnect', () => {
