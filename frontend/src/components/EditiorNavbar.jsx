@@ -1,25 +1,44 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
+import { FaHome } from "react-icons/fa";
 
 const EditiorNavbar = ({ clients, projectName }) => {
   const navigate = useNavigate();
 
-  const handleLogoClick = () => navigate("/");
+  // Redirect to the home page
+  const handleLogoClick = () => {
+    navigate("/");
+  };
 
   return (
-    <nav className="EditiorNavbar flex items-center justify-between px-5 py-2">
-      <div className="logo cursor-pointer" onClick={handleLogoClick}>
-        {projectName}
+    <div className="EditiorNavbar flex items-center justify-between bg-[#1A1A1A] text-white px-4 py-2">
+      {/* Logo and Project Name */}
+      <div className="flex items-center gap-4">
+        <div
+          className="cursor-pointer flex items-center gap-2"
+          onClick={handleLogoClick}
+        >
+          <FaHome size={20} className="text-yellow-400" />
+          <p>File / <span className="text-gray-400">{projectName}</span></p>
+        </div>
       </div>
-      <div className="clients">
-        {clients.map((client) => (
-          <span key={client} className="client">
-            {client}
-          </span>
-        ))}
-      </div>
-    </nav>
+
+      {/* Connected Users */}
+      {/* <div className="flex items-center gap-4">
+        <p className="text-gray-400">Connected Users:</p>
+        <div className="flex gap-2">
+          {clients.map((client) => (
+            <span
+              key={client.socketId}
+              className="text-green-400 text-sm bg-[#2D2D2D] px-2 py-1 rounded"
+            >
+              {client.userId || "Anonymous"}
+            </span>
+          ))}
+        </div>
+      </div> */}
+    </div>
   );
 };
 
