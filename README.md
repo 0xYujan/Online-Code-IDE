@@ -30,7 +30,7 @@ To get a local copy up and running, follow these simple steps:
 
 2. Install dependencies
     ```bash
-    cd full-stack-online-code-ide
+    cd online-code-ide
     npm install
     ```
 
