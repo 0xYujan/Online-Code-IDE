@@ -86,13 +86,13 @@ const Editior = () => {
     if (socketRef.current) {
       const editor = editorRef.current;
       const selection = editor?.getSelection();
-      const position = editor?.getPosition();  // Capture the current cursor position
+      const position = editor?.getPosition(); 
   
       const operation = {
         content: value || "",
         anchor: selection?.startLineNumber || 0,
         focus: selection?.endLineNumber || 0,
-        position,  // Store the cursor position
+        position,  
       };
   
       socketRef.current.emit("code-change", {
@@ -103,7 +103,6 @@ const Editior = () => {
       });
     }
   
-    // Update the local state with the new code
     if (tab === "html") setHtmlCode(value);
     else if (tab === "css") setCssCode(value);
     else if (tab === "js") setJsCode(value);

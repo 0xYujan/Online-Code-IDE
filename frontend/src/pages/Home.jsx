@@ -15,9 +15,8 @@ const Home = () => {
   const [isCreateModelShow, setIsCreateModelShow] = useState(false);
   const [isCollabModelShow, setIsCollabModelShow] = useState(false);
   const navigate = useNavigate();
-  // Filter data based on search query
   const filteredData = data ? data.filter(item =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()) // Case insensitive filtering
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) 
   ) : [];
 
   const createProj = (e) => {
@@ -109,8 +108,8 @@ const Home = () => {
             <input
               type="text"
               placeholder='Search Here... !'
-              value={searchQuery} // Bind search input to searchQuery state
-              onChange={(e) => setSearchQuery(e.target.value)} // Update searchQuery on input change
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
             />
           </div>
           <button onClick={() => { setIsCollabModelShow(true) }} className='btnBlue rounded-[5px] mb-4 text-[20px] !p-[5px] !px-[10px]'>Collaboration</button>
