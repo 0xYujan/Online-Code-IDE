@@ -4,7 +4,7 @@ let socket;
 
 export const initSocket = async () => {
   if (!socket) {
-    socket = io('http://localhost:5000', {
+    socket = io('https://online-code-ide-backend-jvwc.onrender.com', {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: Infinity,
