@@ -103,7 +103,10 @@ router.post("/getProjects", async (req, res) => {
     let {userId} = req.body;
     let user = await userModel.findOne({_id: userId});
     if (user) {
-        let projects = await projectModel.find({createdBy: userId});
+        // Find projects where user is either the creator OR a collaborator
+        let projects = await projectModel.find({
+            $or: [{createdBy: userId}, {collaborators: userId}],
+        });
         return res.json({success: true, message: "Projects fetched successfully", projects: projects});
     } else {
         return res.json({success: false, message: "User not found!"});
@@ -133,13 +136,32 @@ router.post("/getProject", async (req, res) => {
 });
 
 router.post("/updateProject", async (req, res) => {
-    let {userId, htmlCode, cssCode, jsCode, projId} = req.body;
+    let {userId, htmlCode, cssCode, jsCode, projId, changeType, description} = req.body;
     let user = await userModel.findOne({_id: userId});
 
     if (user) {
+        // Create version history entry
+        let versionEntry = {
+            userId: userId,
+            username: user.username,
+            timestamp: new Date(),
+            changeType: changeType || "all",
+            description: description || "Code update",
+            htmlCode: htmlCode,
+            cssCode: cssCode,
+            jsCode: jsCode,
+        };
+
         let project = await projectModel.findOneAndUpdate(
             {_id: projId},
-            {htmlCode: htmlCode, cssCode: cssCode, jsCode: jsCode},
+            {
+                htmlCode: htmlCode,
+                cssCode: cssCode,
+                jsCode: jsCode,
+                lastModified: new Date(),
+                lastModifiedBy: userId,
+                $push: {versionHistory: versionEntry},
+            },
             {new: true} // This option returns the updated document
         );
 
@@ -173,6 +195,20 @@ router.post("/addCollaborator", async (req, res) => {
     );
 
     return res.json({success: true, message: "Collaborator added successfully", project: project});
+});
+
+router.post("/getVersionHistory", async (req, res) => {
+    let {projId} = req.body;
+    try {
+        let project = await projectModel.findOne({_id: projId}).populate("versionHistory.userId", "username name");
+        if (project) {
+            return res.json({success: true, versionHistory: project.versionHistory});
+        } else {
+            return res.json({success: false, message: "Project not found!"});
+        }
+    } catch (error) {
+        return res.json({success: false, message: "Error fetching version history", error: error.message});
+    }
 });
 
 module.exports = router;

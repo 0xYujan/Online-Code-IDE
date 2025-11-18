@@ -55,22 +55,71 @@ html{
 .lightMode{
   background-color: #fff !important;
   color: #000 !important;
-};
-
+}
 
 .lightMode .navbar{
-  background-color: #fff;
+  background-color: #fff !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.lightMode .navbar .links a,
+.lightMode .navbar .links {
+  color: #000 !important;
+}
+
+.lightMode .dropDownNavbar {
+  background-color: #f4f4f4 !important;
+  border: 1px solid #ddd !important;
+}
+
+.lightMode .dropDownNavbar h3,
+.lightMode .dropDownNavbar i {
+  color: #000 !important;
+  border-color: #ddd !important;
 }
 
 .lightMode .tabs{
-  background-color: #f7f7f7;
-}
-.lightMode .tabs .tab{
-  background-color: #c2c1c1;
-  color: #000;
+  background-color: #f7f7f7 !important;
 }
 
-.lightMode .btn{
-  background-color: #C2C1C1;
-  color: #000;
+.lightMode .tabs .tab{
+  background-color: #e0e0e0 !important;
+  color: #000 !important;
+}
+
+.lightMode .tabs .tab.bg-\[\#1E1E1E\] {
+  background-color: #c2c1c1 !important;
+}
+
+.lightMode .EditiorNavbar {
+  background-color: #f4f4f4 !important;
+  color: #000 !important;
+}
+
+.lightMode .inputBox {
+  background-color: #f0f0f0 !important;
+  border: 1px solid #ddd;
+}
+
+.lightMode .inputBox input {
+  color: #000 !important;
+}
+
+.lightMode .gridCard,
+.lightMode .listCard {
+  background-color: #f9f9f9 !important;
+  color: #000 !important;
+  border: 1px solid #ddd !important;
+}
+
+.lightMode .gridCard:hover,
+.lightMode .listCard:hover {
+  background-color: #f0f0f0 !important;
+}
+
+.lightMode .createModelCon .createModel,
+.lightMode .mainModel {
+  background-color: #fff !important;
+  color: #000 !important;
+  border: 1px solid #ddd !important;
 }

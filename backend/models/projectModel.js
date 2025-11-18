@@ -47,6 +47,35 @@ const projectSchema = new mongoose.Schema({
             ref: "User", // Assuming the user model is named "User"
         },
     ],
+    versionHistory: [
+        {
+            userId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+            },
+            username: String,
+            timestamp: {
+                type: Date,
+                default: Date.now,
+            },
+            changeType: {
+                type: String,
+                enum: ["html", "css", "js", "all"],
+            },
+            description: String,
+            htmlCode: String,
+            cssCode: String,
+            jsCode: String,
+        },
+    ],
+    lastModified: {
+        type: Date,
+        default: Date.now,
+    },
+    lastModifiedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
 });
 
 module.exports = mongoose.model("Project", projectSchema);
