@@ -1,17 +1,20 @@
 const mongoose = require("mongoose");
 
-mongoose.connect('mongodb://127.0.0.1:27017/codeIDE');
+mongoose
+.connect("mongodb+srv://code:code@codeide.vzoiryz.mongodb.net/codeIDE")
+.then(() => console.log("MongoDB connected successfully"))
+.catch((err) => console.error("MongoDB connection error:", err));
 
 const projectSchema = new mongoose.Schema({
-  title: String,
-  createdBy: String,
-  date: {
-    type: Date,
-    default: Date.now
-  },
-  htmlCode: {
-    type: String,
-    default: `
+    title: String,
+    createdBy: String,
+    date: {
+        type: Date,
+        default: Date.now,
+    },
+    htmlCode: {
+        type: String,
+        default: `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -23,27 +26,27 @@ const projectSchema = new mongoose.Schema({
     <body>
     
     </body>
-    </html>`
-  },
-  cssCode: {
-    type: String,
-    default: `
+    </html>`,
+    },
+    cssCode: {
+        type: String,
+        default: `
     body{
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-    }`
-  },
-  jsCode: {
-    type: String,
-    default: '//console.log("Hello World")'
-  },
-  collaborators: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'  // Assuming the user model is named "User"
-    }
-  ]
+    }`,
+    },
+    jsCode: {
+        type: String,
+        default: '//console.log("Hello World")',
+    },
+    collaborators: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User", // Assuming the user model is named "User"
+        },
+    ],
 });
 
 module.exports = mongoose.model("Project", projectSchema);

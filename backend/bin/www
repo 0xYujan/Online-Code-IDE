@@ -4,17 +4,17 @@
  * Module dependencies.
  */
 
-var app = require('../app');
-var debug = require('debug')('backend:server');
-var http = require('http');
-const { Server } = require('socket.io');  // Import socket.io
+var app = require("../app");
+var debug = require("debug")("backend:server");
+var http = require("http");
+const {Server} = require("socket.io"); // Import socket.io
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+var port = normalizePort(process.env.PORT || "3000");
+app.set("port", port);
 
 /**
  * Create HTTP server.
@@ -26,23 +26,48 @@ var server = http.createServer(app);
  * Initialize Socket.io and attach it to the server.
  */
 const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST"]
-  }
+    cors: {
+        origin: "http://localhost:5173",
+        methods: ["GET", "POST"],
+    },
 });
 
+let projects = {};
 
-io.on('connection', (socket) => {
-  console.log('socket connected', socket.id);
-  // Add other event listeners here, if needed
-});
+// Socket.io event handling
+io.on("connection", (socket) => {
+    console.log("A user connected:", socket.id);
 
-io.on('connection', (socket) => {
-  console.log(`Client connected: ${socket.id}`);
-  socket.on('disconnect', () => {
-    console.log(`Client disconnected: ${socket.id}`);
-  });
+    socket.on("join", ({projectID, userId}) => {
+        socket.join(projectID);
+        console.log(`${userId} joined the room: ${projectID}`);
+
+        if (!projects[projectID]) {
+            projects[projectID] = {
+                clients: [],
+                htmlCode: "<h1>Hello world</h1>",
+                cssCode: "body { background-color: #f4f4f4; }",
+                jsCode: "// some comment",
+            };
+        }
+
+        projects[projectID].clients.push(userId);
+        io.to(projectID).emit("joined", {clients: projects[projectID].clients, userId});
+    });
+
+    socket.on("code-change", ({projectID, tab, operation}) => {
+        if (projects[projectID]) {
+            if (tab === "html") projects[projectID].htmlCode = operation.content;
+            else if (tab === "css") projects[projectID].cssCode = operation.content;
+            else if (tab === "js") projects[projectID].jsCode = operation.content;
+
+            socket.in(projectID).emit("code-update", {tab, operation});
+        }
+    });
+
+    socket.on("disconnect", () => {
+        console.log("A user disconnected:", socket.id);
+    });
 });
 
 /**
@@ -50,27 +75,27 @@ io.on('connection', (socket) => {
  */
 
 server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+server.on("error", onError);
+server.on("listening", onListening);
 
 /**
  * Normalize a port into a number, string, or false.
  */
 
 function normalizePort(val) {
-  var port = parseInt(val, 10);
+    var port = parseInt(val, 10);
 
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
 
-  if (port >= 0) {
-    // port number
-    return port;
-  }
+    if (port >= 0) {
+        // port number
+        return port;
+    }
 
-  return false;
+    return false;
 }
 
 /**
@@ -78,27 +103,25 @@ function normalizePort(val) {
  */
 
 function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
+    if (error.syscall !== "listen") {
+        throw error;
+    }
 
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
+    var bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
 
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case "EACCES":
+            console.error(bind + " requires elevated privileges");
+            process.exit(1);
+            break;
+        case "EADDRINUSE":
+            console.error(bind + " is already in use");
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
 }
 
 /**
@@ -106,9 +129,9 @@ function onError(error) {
  */
 
 function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+    var addr = server.address();
+    var bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
+    debug("Listening on " + bind);
+    console.log("Server running on http://localhost:" + addr.port);
+    console.log("Socket.IO server ready for connections");
 }
