@@ -1,9 +1,10 @@
 import React, {useEffect, useState, useRef} from "react";
 import EditiorNavbar from "../components/EditiorNavbar";
 import VersionHistory from "../components/VersionHistory";
+import CodeAnalysis from "../components/CodeAnalysis";
 import {MdLightMode} from "react-icons/md";
 import {AiOutlineExpandAlt} from "react-icons/ai";
-import {FaHistory} from "react-icons/fa";
+import {FaHistory, FaCode} from "react-icons/fa";
 import {api_base_url} from "../helper";
 import {useParams, useNavigate} from "react-router-dom";
 import {initSocket} from "../socket";
@@ -16,6 +17,7 @@ const Editior = () => {
     const [isLightMode, setIsLightMode] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [showVersionHistory, setShowVersionHistory] = useState(false);
+    const [showCodeAnalysis, setShowCodeAnalysis] = useState(false);
     const [htmlCode, setHtmlCode] = useState("<h1>Hello world</h1>");
     const [cssCode, setCssCode] = useState("body { background-color: #f4f4f4; }");
     const [jsCode, setJsCode] = useState("// some comment");
@@ -118,6 +120,205 @@ const Editior = () => {
             editorNavbar.style.background = "#f4f4f4";
             document.body.classList.add("lightMode");
             setIsLightMode(true);
+        }
+    };
+
+    const setupAutoSuggestions = (monaco, language) => {
+        // HTML Custom Suggestions
+        if (language === "html") {
+            monaco.languages.registerCompletionItemProvider("html", {
+                provideCompletionItems: (model, position) => {
+                    const suggestions = [
+                        {
+                            label: "div",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: '<div className="${1:class-name}">\n\t${2}\n</div>',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create a div element with class",
+                        },
+                        {
+                            label: "button",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: '<button onClick="${1:handleClick}">${2:Click me}</button>',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create a button element",
+                        },
+                        {
+                            label: "input",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: '<input type="${1:text}" placeholder="${2:Enter text}" />',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create an input field",
+                        },
+                        {
+                            label: "form",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: '<form onSubmit="${1:handleSubmit}">\n\t${2}\n</form>',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create a form element",
+                        },
+                        {
+                            label: "img",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: '<img src="${1:image.jpg}" alt="${2:description}" />',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create an image element",
+                        },
+                        {
+                            label: "link",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: '<a href="${1:url}">${2:Link Text}</a>',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create a hyperlink",
+                        },
+                    ];
+                    return {suggestions};
+                },
+            });
+        }
+
+        // CSS Custom Suggestions
+        if (language === "css") {
+            monaco.languages.registerCompletionItemProvider("css", {
+                provideCompletionItems: (model, position) => {
+                    const suggestions = [
+                        {
+                            label: "flex-center",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "display: flex;\njustify-content: center;\nalign-items: center;",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Flexbox center layout",
+                        },
+                        {
+                            label: "grid-layout",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "display: grid;\ngrid-template-columns: repeat(${1:3}, 1fr);\ngap: ${2:20px};",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Grid layout template",
+                        },
+                        {
+                            label: "transition",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "transition: all ${1:0.3s} ease;",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Add transition effect",
+                        },
+                        {
+                            label: "shadow",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "box-shadow: ${1:0 2px 4px} rgba(0, 0, 0, ${2:0.1});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Add box shadow",
+                        },
+                        {
+                            label: "gradient",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "background: linear-gradient(${1:to right}, ${2:#ff0000}, ${3:#00ff00});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Linear gradient background",
+                        },
+                    ];
+                    return {suggestions};
+                },
+            });
+        }
+
+        // JavaScript Custom Suggestions
+        if (language === "javascript") {
+            monaco.languages.registerCompletionItemProvider("javascript", {
+                provideCompletionItems: (model, position) => {
+                    const suggestions = [
+                        {
+                            label: "log",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: 'console.log("${1:message}", ${2:variable});',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Console log statement",
+                        },
+                        {
+                            label: "func",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "function ${1:functionName}(${2:params}) {\n\t${3}\n}",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create a function",
+                        },
+                        {
+                            label: "arrow",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "const ${1:functionName} = (${2:params}) => {\n\t${3}\n};",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Arrow function",
+                        },
+                        {
+                            label: "foreach",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "${1:array}.forEach((${2:item}) => {\n\t${3}\n});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "forEach loop",
+                        },
+                        {
+                            label: "map",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "${1:array}.map((${2:item}) => ${3:item});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Map array method",
+                        },
+                        {
+                            label: "filter",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "${1:array}.filter((${2:item}) => ${3:condition});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Filter array method",
+                        },
+                        {
+                            label: "fetch",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText:
+                                'fetch("${1:url}")\n\t.then(res => res.json())\n\t.then(data => {\n\t\t${2}\n\t})\n\t.catch(err => console.error(err));',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Fetch API call",
+                        },
+                        {
+                            label: "async",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText:
+                                "async ${1:functionName}(${2:params}) {\n\ttry {\n\t\t${3}\n\t} catch (error) {\n\t\tconsole.error(error);\n\t}\n}",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Async function with try-catch",
+                        },
+                        {
+                            label: "promise",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "new Promise((resolve, reject) => {\n\t${1}\n\tresolve(${2:value});\n});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create a Promise",
+                        },
+                        {
+                            label: "setInterval",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "setInterval(() => {\n\t${1}\n}, ${2:1000});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Set interval timer",
+                        },
+                        {
+                            label: "setTimeout",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: "setTimeout(() => {\n\t${1}\n}, ${2:1000});",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Set timeout",
+                        },
+                        {
+                            label: "class",
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText:
+                                "class ${1:ClassName} {\n\tconstructor(${2:params}) {\n\t\t${3}\n\t}\n\n\t${4:methodName}() {\n\t\t${5}\n\t}\n}",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            documentation: "Create a class",
+                        },
+                    ];
+                    return {suggestions};
+                },
+            });
         }
     };
 
@@ -241,6 +442,13 @@ const Editior = () => {
                             >
                                 <FaHistory />
                             </i>
+                            <i
+                                className="text-[20px] cursor-pointer hover:text-green-400 transition"
+                                onClick={() => setShowCodeAnalysis(true)}
+                                title="Code Analysis (Tokenizer)"
+                            >
+                                <FaCode />
+                            </i>
                             <i className="text-[20px] cursor-pointer" onClick={changeTheme}>
                                 <MdLightMode />
                             </i>
@@ -256,7 +464,22 @@ const Editior = () => {
                         theme={isLightMode ? "vs-light" : "vs-dark"}
                         language={tab}
                         value={tab === "html" ? htmlCode : tab === "css" ? cssCode : jsCode}
-                        onMount={(editor) => (editorRef.current = editor)}
+                        onMount={(editor, monaco) => {
+                            editorRef.current = editor;
+                            setupAutoSuggestions(monaco, tab);
+                        }}
+                        options={{
+                            quickSuggestions: true,
+                            suggestOnTriggerCharacters: true,
+                            acceptSuggestionOnEnter: "on",
+                            tabCompletion: "on",
+                            wordBasedSuggestions: true,
+                            suggest: {
+                                showKeywords: true,
+                                showSnippets: true,
+                                showWords: true,
+                            },
+                        }}
                     />
                 </div>
 
@@ -265,6 +488,14 @@ const Editior = () => {
 
             {showVersionHistory && (
                 <VersionHistory projectID={projectID} onClose={() => setShowVersionHistory(false)} />
+            )}
+
+            {showCodeAnalysis && (
+                <CodeAnalysis
+                    code={tab === "html" ? htmlCode : tab === "css" ? cssCode : jsCode}
+                    language={tab === "js" ? "javascript" : tab}
+                    onClose={() => setShowCodeAnalysis(false)}
+                />
             )}
         </>
     );
