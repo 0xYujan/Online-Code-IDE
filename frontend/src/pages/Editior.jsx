@@ -25,30 +25,89 @@ const Editior = () => {
     const editorRef = useRef(null);
     const socketRef = useRef(null);
     const currentRevision = useRef(0);
+    const hasJoined = useRef(false); // Track if we've already joined to prevent double joins
     const {projectID} = useParams();
     const navigate = useNavigate();
     const [clients, setClients] = useState([]);
+    const [username, setUsername] = useState(localStorage.getItem("username") || "");
+
+    // Fetch and store username if not already in localStorage
+    useEffect(() => {
+        const fetchUsername = async () => {
+            // If username is already in localStorage, use it
+            if (localStorage.getItem("username")) {
+                setUsername(localStorage.getItem("username"));
+                return;
+            }
+
+            // Fetch user details to get the username
+            try {
+                const response = await fetch(api_base_url + "/getUserDetails", {
+                    mode: "cors",
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        userId: localStorage.getItem("userId"),
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.success && data.user && data.user.username) {
+                    // Store username in localStorage and state
+                    localStorage.setItem("username", data.user.username);
+                    setUsername(data.user.username);
+                    console.log("✅ Username fetched and stored:", data.user.username);
+                }
+            } catch (error) {
+                console.error("Error fetching username:", error);
+            }
+        };
+
+        fetchUsername();
+    }, []);
 
     useEffect(() => {
+        // Don't initialize socket until we have a username
+        if (!username) {
+            return;
+        }
+
         const init = async () => {
             socketRef.current = await initSocket();
 
             socketRef.current.on("connect_error", handleErrors);
             socketRef.current.on("connect_failed", handleErrors);
 
-            socketRef.current.emit(ACTIONS.JOIN, {
-                projectID,
-                userId: localStorage.getItem("userId"),
-            });
+            // Only emit join if we haven't already joined this project
+            if (!hasJoined.current) {
+                hasJoined.current = true;
+                socketRef.current.emit(ACTIONS.JOIN, {
+                    projectID,
+                    userId: localStorage.getItem("userId"),
+                    username: username, // Use the username from state
+                });
+            }
 
-            socketRef.current.on(ACTIONS.JOINED, ({clients, userId}) => {
+            socketRef.current.on(ACTIONS.JOINED, ({clients, userId, username}) => {
                 if (userId !== localStorage.getItem("userId")) {
-                    toast.success(`${userId} joined the room`);
+                    toast.success(`${username || userId} joined the room`);
+                    console.log(`👤 ${username} joined the room`);
                 }
                 setClients(clients);
             });
 
+            // Listen for code sync when joining
+            socketRef.current.on("sync-code", ({htmlCode, cssCode, jsCode}) => {
+                console.log("📥 Syncing code state from server");
+                setHtmlCode(htmlCode);
+                setCssCode(cssCode);
+                setJsCode(jsCode);
+            });
+
             socketRef.current.on("code-update", ({tab, operation}) => {
+                console.log(`📝 Received code update for ${tab}:`, operation.content?.substring(0, 50));
                 if (tab === "html") setHtmlCode(operation.content);
                 else if (tab === "css") setCssCode(operation.content);
                 else if (tab === "js") setJsCode(operation.content);
@@ -64,6 +123,12 @@ const Editior = () => {
                 }
             });
 
+            socketRef.current.on("user-left", ({userId, username, clients}) => {
+                toast.error(`${username || userId} left the room`);
+                console.log(`👋 ${username} left the room`);
+                setClients(clients);
+            });
+
             socketRef.current.on("disconnect", () => {
                 console.log("Disconnected from server");
             });
@@ -72,11 +137,12 @@ const Editior = () => {
         init();
 
         return () => {
+            hasJoined.current = false; // Reset join flag when component unmounts
             if (socketRef.current) {
                 socketRef.current.disconnect();
             }
         };
-    }, [projectID, navigate]);
+    }, [projectID, navigate, username]); // Added username to dependencies
 
     const handleErrors = (e) => {
         console.error("Socket error", e);
@@ -85,6 +151,12 @@ const Editior = () => {
     };
 
     const handleCodeChange = (value) => {
+        // Update local state first for immediate feedback
+        if (tab === "html") setHtmlCode(value);
+        else if (tab === "css") setCssCode(value);
+        else if (tab === "js") setJsCode(value);
+
+        // Then emit to other clients
         if (socketRef.current) {
             const editor = editorRef.current;
             const selection = editor?.getSelection();
@@ -97,6 +169,7 @@ const Editior = () => {
                 position,
             };
 
+            console.log(`📤 Sending code change for ${tab} to project ${projectID}`);
             socketRef.current.emit("code-change", {
                 projectID,
                 tab,
@@ -104,10 +177,6 @@ const Editior = () => {
                 revision: currentRevision.current,
             });
         }
-
-        if (tab === "html") setHtmlCode(value);
-        else if (tab === "css") setCssCode(value);
-        else if (tab === "js") setJsCode(value);
     };
 
     const changeTheme = () => {

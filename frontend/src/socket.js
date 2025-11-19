@@ -3,7 +3,7 @@ import {io} from "socket.io-client";
 let socket;
 
 export const initSocket = async () => {
-    if (!socket) {
+    if (!socket || socket.disconnected) {
         console.log("Initializing Socket.IO connection to http://localhost:3000");
         socket = io("http://localhost:3000", {
             transports: ["websocket", "polling"],
@@ -24,13 +24,22 @@ export const initSocket = async () => {
         socket.on("disconnect", (reason) => {
             console.warn("⚠️ Disconnected from server:", reason);
         });
+    } else if (socket.connected) {
+        // If socket is already connected, remove all listeners except the base ones
+        console.log("♻️ Reusing existing socket connection:", socket.id);
+        socket.removeAllListeners();
 
-        socket.on("code-update", ({tab, operation}) => {
-            console.log("📝 Received code update for tab:", tab);
+        // Re-add base listeners
+        socket.on("connect", () => {
+            console.log("✅ Connected to server:", socket.id);
         });
 
-        socket.on("joined", ({clients, userId}) => {
-            console.log("👥 User joined:", userId, "Total clients:", clients.length);
+        socket.on("connect_error", (err) => {
+            console.error("❌ Connection error:", err.message);
+        });
+
+        socket.on("disconnect", (reason) => {
+            console.warn("⚠️ Disconnected from server:", reason);
         });
     }
 

@@ -38,9 +38,12 @@ let projects = {};
 io.on("connection", (socket) => {
     console.log("A user connected:", socket.id);
 
-    socket.on("join", ({projectID, userId}) => {
+    socket.on("join", ({projectID, userId, username}) => {
         socket.join(projectID);
-        console.log(`${userId} joined the room: ${projectID}`);
+        socket.userId = userId; // Store userId on socket for disconnect handling
+        socket.username = username || "Anonymous"; // Store username on socket
+        socket.projectID = projectID; // Store projectID for disconnect handling
+        console.log(`${username || userId} attempting to join room: ${projectID}`);
 
         if (!projects[projectID]) {
             projects[projectID] = {
@@ -51,8 +54,27 @@ io.on("connection", (socket) => {
             };
         }
 
-        projects[projectID].clients.push(userId);
-        io.to(projectID).emit("joined", {clients: projects[projectID].clients, userId});
+        // Check if this is a NEW client joining (not already in the list)
+        const isNewClient = !projects[projectID].clients.includes(userId);
+
+        if (isNewClient) {
+            projects[projectID].clients.push(userId);
+            console.log(`✅ ${username || userId} joined the room: ${projectID}`);
+
+            // Only notify OTHER clients if this is truly a new join
+            socket.to(projectID).emit("joined", {clients: projects[projectID].clients, userId, username});
+        } else {
+            console.log(`♻️ ${username || userId} reconnected to room: ${projectID}`);
+        }
+
+        // Send the current code state to the client (whether new or reconnecting)
+        socket.emit("sync-code", {
+            htmlCode: projects[projectID].htmlCode,
+            cssCode: projects[projectID].cssCode,
+            jsCode: projects[projectID].jsCode,
+        });
+
+        console.log(`Total clients in ${projectID}:`, projects[projectID].clients.length);
     });
 
     socket.on("code-change", ({projectID, tab, operation}) => {
@@ -61,12 +83,30 @@ io.on("connection", (socket) => {
             else if (tab === "css") projects[projectID].cssCode = operation.content;
             else if (tab === "js") projects[projectID].jsCode = operation.content;
 
-            socket.in(projectID).emit("code-update", {tab, operation});
+            // Broadcast to all clients in the room EXCEPT the sender
+            socket.to(projectID).emit("code-update", {tab, operation});
+            console.log(`Broadcasting code update for ${tab} in project ${projectID}`);
         }
     });
 
     socket.on("disconnect", () => {
         console.log("A user disconnected:", socket.id);
+        // Remove disconnected client from the project
+        if (socket.projectID && socket.userId) {
+            const projectID = socket.projectID;
+            if (projects[projectID]) {
+                const index = projects[projectID].clients.findIndex((client) => client === socket.userId);
+                if (index !== -1) {
+                    projects[projectID].clients.splice(index, 1);
+                    io.to(projectID).emit("user-left", {
+                        userId: socket.userId,
+                        username: socket.username,
+                        clients: projects[projectID].clients,
+                    });
+                    console.log(`User ${socket.username || socket.userId} left project ${projectID}`);
+                }
+            }
+        }
     });
 });
 
