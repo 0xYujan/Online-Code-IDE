@@ -21,15 +21,48 @@ const Editior = () => {
     const [htmlCode, setHtmlCode] = useState("<h1>Hello world</h1>");
     const [cssCode, setCssCode] = useState("body { background-color: #f4f4f4; }");
     const [jsCode, setJsCode] = useState("// some comment");
+    const [projectName, setProjectName] = useState("");
 
     const editorRef = useRef(null);
     const socketRef = useRef(null);
     const currentRevision = useRef(0);
     const hasJoined = useRef(false); // Track if we've already joined to prevent double joins
+    const isTyping = useRef(false); // Track if user is currently typing locally
     const {projectID} = useParams();
     const navigate = useNavigate();
     const [clients, setClients] = useState([]);
     const [username, setUsername] = useState(localStorage.getItem("username") || "");
+
+    // Fetch project details to get the project name
+    useEffect(() => {
+        const fetchProjectDetails = async () => {
+            try {
+                const response = await fetch(api_base_url + "/getProject", {
+                    mode: "cors",
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        userId: localStorage.getItem("userId"),
+                        projId: projectID,
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.success && data.project) {
+                    setProjectName(data.project.title);
+                } else {
+                    setProjectName("Untitled Project");
+                }
+            } catch (error) {
+                console.error("Error fetching project details:", error);
+                setProjectName("Untitled Project");
+            }
+        };
+
+        fetchProjectDetails();
+    }, [projectID]);
 
     // Fetch and store username if not already in localStorage
     useEffect(() => {
@@ -106,21 +139,19 @@ const Editior = () => {
                 setJsCode(jsCode);
             });
 
-            socketRef.current.on("code-update", ({tab, operation}) => {
-                console.log(`📝 Received code update for ${tab}:`, operation.content?.substring(0, 50));
-                if (tab === "html") setHtmlCode(operation.content);
-                else if (tab === "css") setCssCode(operation.content);
-                else if (tab === "js") setJsCode(operation.content);
+            socketRef.current.on("code-update", ({tab: updatedTab, operation}) => {
+                console.log(`📝 Received code update for ${updatedTab}:`, operation.content?.substring(0, 50));
 
-                const editor = editorRef.current;
-
-                // Only restore the selection and cursor position if the position is available
-                if (editor && operation.position) {
-                    editor.setPosition(operation.position); // Set cursor position
-
-                    const newSelection = new monaco.Range(operation.anchor, 0, operation.focus, 0);
-                    editor.setSelection(newSelection); // Restore the selection range
+                // Don't update if user is currently typing in the same tab
+                if (isTyping.current && updatedTab === tab) {
+                    console.log("⏭️ Skipping update - user is typing");
+                    return;
                 }
+
+                // Only update the code if it's for a different tab or user is not typing
+                if (updatedTab === "html") setHtmlCode(operation.content);
+                else if (updatedTab === "css") setCssCode(operation.content);
+                else if (updatedTab === "js") setJsCode(operation.content);
             });
 
             socketRef.current.on("user-left", ({userId, username, clients}) => {
@@ -151,6 +182,9 @@ const Editior = () => {
     };
 
     const handleCodeChange = (value) => {
+        // Mark that user is typing
+        isTyping.current = true;
+
         // Update local state first for immediate feedback
         if (tab === "html") setHtmlCode(value);
         else if (tab === "css") setCssCode(value);
@@ -177,6 +211,11 @@ const Editior = () => {
                 revision: currentRevision.current,
             });
         }
+
+        // Reset typing flag after a short delay
+        setTimeout(() => {
+            isTyping.current = false;
+        }, 300);
     };
 
     const changeTheme = () => {
@@ -472,7 +511,7 @@ const Editior = () => {
 
     return (
         <>
-            <EditiorNavbar clients={clients} projectName={`Project: ${projectID}`} />
+            <EditiorNavbar clients={clients} projectName={projectName || "Loading..."} projectID={projectID} />
             <div className="flex">
                 <div className={`left w-[${isExpanded ? "100%" : "50%"}]`}>
                     <div className="tabs flex items-center justify-between gap-2 w-full bg-[#1A1919] h-[50px] px-[40px]">
@@ -504,26 +543,26 @@ const Editior = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <i
+                            <FaHistory
                                 className="text-[20px] cursor-pointer hover:text-blue-400 transition"
                                 onClick={() => setShowVersionHistory(true)}
                                 title="Version History"
-                            >
-                                <FaHistory />
-                            </i>
-                            <i
+                            />
+                            <FaCode
                                 className="text-[20px] cursor-pointer hover:text-green-400 transition"
                                 onClick={() => setShowCodeAnalysis(true)}
                                 title="Code Analysis (Tokenizer)"
-                            >
-                                <FaCode />
-                            </i>
-                            <i className="text-[20px] cursor-pointer" onClick={changeTheme}>
-                                <MdLightMode />
-                            </i>
-                            <i className="text-[20px] cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-                                <AiOutlineExpandAlt />
-                            </i>
+                            />
+                            <MdLightMode
+                                className="text-[20px] cursor-pointer hover:text-yellow-400 transition"
+                                onClick={changeTheme}
+                                title="Toggle Theme"
+                            />
+                            <AiOutlineExpandAlt
+                                className="text-[20px] cursor-pointer hover:text-purple-400 transition"
+                                onClick={() => setIsExpanded(!isExpanded)}
+                                title="Toggle Expand"
+                            />
                         </div>
                     </div>
 
