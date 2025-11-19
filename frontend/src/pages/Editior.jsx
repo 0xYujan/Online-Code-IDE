@@ -2,15 +2,15 @@ import React, {useEffect, useState, useRef} from "react";
 import EditiorNavbar from "../components/EditiorNavbar";
 import VersionHistory from "../components/VersionHistory";
 import CodeAnalysis from "../components/CodeAnalysis";
+import EnhancedEditor from "../components/EnhancedEditor";
 import {MdLightMode} from "react-icons/md";
 import {AiOutlineExpandAlt} from "react-icons/ai";
-import {FaHistory, FaCode} from "react-icons/fa";
+import {FaHistory, FaCode, FaCog, FaKeyboard, FaTerminal, FaExpand, FaCompress} from "react-icons/fa";
 import {api_base_url} from "../helper";
 import {useParams, useNavigate} from "react-router-dom";
 import {initSocket} from "../socket";
 import ACTIONS from "../Actions";
 import toast from "react-hot-toast";
-import Editor from "@monaco-editor/react";
 
 const Editior = () => {
     const [tab, setTab] = useState("html");
@@ -22,6 +22,11 @@ const Editior = () => {
     const [cssCode, setCssCode] = useState("body { background-color: #f4f4f4; }");
     const [jsCode, setJsCode] = useState("// some comment");
     const [projectName, setProjectName] = useState("");
+    const [consoleLogs, setConsoleLogs] = useState([]);
+    const [showConsole, setShowConsole] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
+    const [isEditorFullScreen, setIsEditorFullScreen] = useState(false);
 
     const editorRef = useRef(null);
     const socketRef = useRef(null);
@@ -99,6 +104,25 @@ const Editior = () => {
         };
 
         fetchUsername();
+    }, []);
+
+    // Listen for console messages from iframe
+    useEffect(() => {
+        const handleMessage = (event) => {
+            if (event.data && event.data.type === "console") {
+                setConsoleLogs((prev) => [
+                    ...prev,
+                    {
+                        type: event.data.level,
+                        message: event.data.message,
+                        timestamp: new Date().toLocaleTimeString(),
+                    },
+                ]);
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
     }, []);
 
     useEffect(() => {
@@ -192,15 +216,8 @@ const Editior = () => {
 
         // Then emit to other clients
         if (socketRef.current) {
-            const editor = editorRef.current;
-            const selection = editor?.getSelection();
-            const position = editor?.getPosition();
-
             const operation = {
                 content: value || "",
-                anchor: selection?.startLineNumber || 0,
-                focus: selection?.endLineNumber || 0,
-                position,
             };
 
             console.log(`📤 Sending code change for ${tab} to project ${projectID}`);
@@ -231,213 +248,74 @@ const Editior = () => {
         }
     };
 
-    const setupAutoSuggestions = (monaco, language) => {
-        // HTML Custom Suggestions
-        if (language === "html") {
-            monaco.languages.registerCompletionItemProvider("html", {
-                provideCompletionItems: (model, position) => {
-                    const suggestions = [
-                        {
-                            label: "div",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: '<div className="${1:class-name}">\n\t${2}\n</div>',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create a div element with class",
-                        },
-                        {
-                            label: "button",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: '<button onClick="${1:handleClick}">${2:Click me}</button>',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create a button element",
-                        },
-                        {
-                            label: "input",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: '<input type="${1:text}" placeholder="${2:Enter text}" />',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create an input field",
-                        },
-                        {
-                            label: "form",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: '<form onSubmit="${1:handleSubmit}">\n\t${2}\n</form>',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create a form element",
-                        },
-                        {
-                            label: "img",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: '<img src="${1:image.jpg}" alt="${2:description}" />',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create an image element",
-                        },
-                        {
-                            label: "link",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: '<a href="${1:url}">${2:Link Text}</a>',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create a hyperlink",
-                        },
-                    ];
-                    return {suggestions};
-                },
-            });
-        }
-
-        // CSS Custom Suggestions
-        if (language === "css") {
-            monaco.languages.registerCompletionItemProvider("css", {
-                provideCompletionItems: (model, position) => {
-                    const suggestions = [
-                        {
-                            label: "flex-center",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "display: flex;\njustify-content: center;\nalign-items: center;",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Flexbox center layout",
-                        },
-                        {
-                            label: "grid-layout",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "display: grid;\ngrid-template-columns: repeat(${1:3}, 1fr);\ngap: ${2:20px};",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Grid layout template",
-                        },
-                        {
-                            label: "transition",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "transition: all ${1:0.3s} ease;",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Add transition effect",
-                        },
-                        {
-                            label: "shadow",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "box-shadow: ${1:0 2px 4px} rgba(0, 0, 0, ${2:0.1});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Add box shadow",
-                        },
-                        {
-                            label: "gradient",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "background: linear-gradient(${1:to right}, ${2:#ff0000}, ${3:#00ff00});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Linear gradient background",
-                        },
-                    ];
-                    return {suggestions};
-                },
-            });
-        }
-
-        // JavaScript Custom Suggestions
-        if (language === "javascript") {
-            monaco.languages.registerCompletionItemProvider("javascript", {
-                provideCompletionItems: (model, position) => {
-                    const suggestions = [
-                        {
-                            label: "log",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: 'console.log("${1:message}", ${2:variable});',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Console log statement",
-                        },
-                        {
-                            label: "func",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "function ${1:functionName}(${2:params}) {\n\t${3}\n}",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create a function",
-                        },
-                        {
-                            label: "arrow",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "const ${1:functionName} = (${2:params}) => {\n\t${3}\n};",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Arrow function",
-                        },
-                        {
-                            label: "foreach",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "${1:array}.forEach((${2:item}) => {\n\t${3}\n});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "forEach loop",
-                        },
-                        {
-                            label: "map",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "${1:array}.map((${2:item}) => ${3:item});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Map array method",
-                        },
-                        {
-                            label: "filter",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "${1:array}.filter((${2:item}) => ${3:condition});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Filter array method",
-                        },
-                        {
-                            label: "fetch",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText:
-                                'fetch("${1:url}")\n\t.then(res => res.json())\n\t.then(data => {\n\t\t${2}\n\t})\n\t.catch(err => console.error(err));',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Fetch API call",
-                        },
-                        {
-                            label: "async",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText:
-                                "async ${1:functionName}(${2:params}) {\n\ttry {\n\t\t${3}\n\t} catch (error) {\n\t\tconsole.error(error);\n\t}\n}",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Async function with try-catch",
-                        },
-                        {
-                            label: "promise",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "new Promise((resolve, reject) => {\n\t${1}\n\tresolve(${2:value});\n});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create a Promise",
-                        },
-                        {
-                            label: "setInterval",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "setInterval(() => {\n\t${1}\n}, ${2:1000});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Set interval timer",
-                        },
-                        {
-                            label: "setTimeout",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: "setTimeout(() => {\n\t${1}\n}, ${2:1000});",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Set timeout",
-                        },
-                        {
-                            label: "class",
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText:
-                                "class ${1:ClassName} {\n\tconstructor(${2:params}) {\n\t\t${3}\n\t}\n\n\t${4:methodName}() {\n\t\t${5}\n\t}\n}",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: "Create a class",
-                        },
-                    ];
-                    return {suggestions};
-                },
-            });
-        }
-    };
-
     const run = () => {
         const html = htmlCode;
         const css = `<style>${cssCode}</style>`;
+
+        // Inject console interceptor before user code
+        const consoleInterceptor = `
+            <script>
+                (function() {
+                    const originalLog = console.log;
+                    const originalError = console.error;
+                    const originalWarn = console.warn;
+                    const originalInfo = console.info;
+                    
+                    window.addEventListener('error', function(e) {
+                        window.parent.postMessage({
+                            type: 'console',
+                            level: 'error',
+                            message: e.message + ' (Line: ' + e.lineno + ')'
+                        }, '*');
+                    });
+                    
+                    console.log = function(...args) {
+                        window.parent.postMessage({
+                            type: 'console',
+                            level: 'log',
+                            message: args.map(a => {
+                                if (typeof a === 'object') return JSON.stringify(a, null, 2);
+                                return String(a);
+                            }).join(' ')
+                        }, '*');
+                        originalLog.apply(console, args);
+                    };
+                    
+                    console.error = function(...args) {
+                        window.parent.postMessage({
+                            type: 'console',
+                            level: 'error',
+                            message: args.map(a => String(a)).join(' ')
+                        }, '*');
+                        originalError.apply(console, args);
+                    };
+                    
+                    console.warn = function(...args) {
+                        window.parent.postMessage({
+                            type: 'console',
+                            level: 'warn',
+                            message: args.map(a => String(a)).join(' ')
+                        }, '*');
+                        originalWarn.apply(console, args);
+                    };
+                    
+                    console.info = function(...args) {
+                        window.parent.postMessage({
+                            type: 'console',
+                            level: 'info',
+                            message: args.map(a => String(a)).join(' ')
+                        }, '*');
+                        originalInfo.apply(console, args);
+                    };
+                })();
+            </script>
+        `;
+
         const js = `<script>${jsCode}</script>`;
         const iframe = document.getElementById("iframe");
 
         if (iframe) {
-            iframe.srcdoc = html + css + js;
+            iframe.srcdoc = html + css + consoleInterceptor + js;
         }
     };
 
@@ -543,6 +421,35 @@ const Editior = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
+                            <FaTerminal
+                                className="text-[20px] cursor-pointer hover:text-cyan-400 transition"
+                                onClick={() => setShowConsole(!showConsole)}
+                                title="Toggle Console"
+                                style={{color: showConsole ? "#22d3ee" : "inherit"}}
+                            />
+                            <FaCog
+                                className="text-[20px] cursor-pointer hover:text-gray-400 transition"
+                                onClick={() => setShowSettings(true)}
+                                title="Settings"
+                            />
+                            <FaKeyboard
+                                className="text-[20px] cursor-pointer hover:text-pink-400 transition"
+                                onClick={() => setShowShortcuts(true)}
+                                title="Keyboard Shortcuts"
+                            />
+                            {isEditorFullScreen ? (
+                                <FaCompress
+                                    className="text-[20px] cursor-pointer hover:text-orange-400 transition"
+                                    onClick={() => setIsEditorFullScreen(false)}
+                                    title="Exit Full Screen"
+                                />
+                            ) : (
+                                <FaExpand
+                                    className="text-[20px] cursor-pointer hover:text-orange-400 transition"
+                                    onClick={() => setIsEditorFullScreen(true)}
+                                    title="Full Screen Editor"
+                                />
+                            )}
                             <FaHistory
                                 className="text-[20px] cursor-pointer hover:text-blue-400 transition"
                                 onClick={() => setShowVersionHistory(true)}
@@ -561,33 +468,26 @@ const Editior = () => {
                             <AiOutlineExpandAlt
                                 className="text-[20px] cursor-pointer hover:text-purple-400 transition"
                                 onClick={() => setIsExpanded(!isExpanded)}
-                                title="Toggle Expand"
+                                title="Toggle Preview"
                             />
                         </div>
                     </div>
 
-                    <Editor
+                    <EnhancedEditor
+                        value={tab === "html" ? htmlCode : tab === "css" ? cssCode : jsCode}
                         onChange={(value) => handleCodeChange(value || "")}
                         height="82vh"
-                        theme={isLightMode ? "vs-light" : "vs-dark"}
-                        language={tab}
-                        value={tab === "html" ? htmlCode : tab === "css" ? cssCode : jsCode}
-                        onMount={(editor, monaco) => {
-                            editorRef.current = editor;
-                            setupAutoSuggestions(monaco, tab);
-                        }}
-                        options={{
-                            quickSuggestions: true,
-                            suggestOnTriggerCharacters: true,
-                            acceptSuggestionOnEnter: "on",
-                            tabCompletion: "on",
-                            wordBasedSuggestions: true,
-                            suggest: {
-                                showKeywords: true,
-                                showSnippets: true,
-                                showWords: true,
-                            },
-                        }}
+                        theme={isLightMode ? "light" : "dark"}
+                        language={tab === "js" ? "javascript" : tab}
+                        consoleLogs={consoleLogs}
+                        onClearConsole={() => setConsoleLogs([])}
+                        showConsole={showConsole}
+                        onToggleConsole={setShowConsole}
+                        showSettings={showSettings}
+                        onToggleSettings={setShowSettings}
+                        showShortcuts={showShortcuts}
+                        onToggleShortcuts={setShowShortcuts}
+                        isFullScreen={isEditorFullScreen}
                     />
                 </div>
 

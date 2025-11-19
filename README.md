@@ -5,7 +5,8 @@ Welcome to the **Online Code IDE**! This platform allows users to write, test, a
 ## 🚀 Features
 
 - **Real-Time Collaboration**: Collaborate with other developers and work on projects together, seeing live code updates as you type.
-- **Monaco Editor Integration**: Professional code editor with syntax highlighting, auto-completion, and IntelliSense.
+- **Custom Code Editor**: Fully customized code editor with syntax highlighting, line numbers, and tab indentation.
+- **Syntax Highlighting**: Beautiful color-coded syntax for HTML, CSS, and JavaScript.
 - **Live Preview**: Instantly see your HTML, CSS, and JavaScript output in real-time.
 - **Theme Support**: Toggle between light and dark themes for comfortable coding.
 - **Version History**: Track and view previous versions of your code.
@@ -21,7 +22,7 @@ Welcome to the **Online Code IDE**! This platform allows users to write, test, a
 - **React.js 18.3.1**: Modern UI library
 - **Vite 5.4.10**: Fast build tool and dev server
 - **TailwindCSS 3.4.14**: Utility-first CSS framework
-- **Monaco Editor 4.6.0**: VS Code's editor for the web
+- **Custom Code Editor**: Built-in syntax highlighting and editor features
 - **Socket.IO Client 4.8.1**: Real-time bidirectional communication
 - **React Router DOM 6.28.0**: Client-side routing
 - **React Hot Toast 2.4.1**: Beautiful toast notifications
@@ -236,10 +237,10 @@ Contributions are welcome! If you have any ideas or improvements, feel free to f
 
 ## 🙏 Acknowledgments
 
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - The code editor that powers VS Code
 - [Socket.IO](https://socket.io/) - Real-time bidirectional event-based communication
 - [React Icons](https://react-icons.github.io/react-icons/) - Popular icon library
 - [TailwindCSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [Vite](https://vitejs.dev/) - Next generation frontend tooling
 
 ## 📄 License
 
